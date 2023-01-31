@@ -15,6 +15,12 @@ class NewsListVC: UIViewController {
         tableView.register(TableViewCell.self, forCellReuseIdentifier: TableViewCell.identifier)
         return tableView
     }()
+    
+    private let segmentControl: UISegmentedControl = {
+        let segmentControl = UISegmentedControl(items: ["News - US", "News - TR"])
+        segmentControl.selectedSegmentIndex = 0
+        return segmentControl
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,9 +28,41 @@ class NewsListVC: UIViewController {
         view.backgroundColor = .systemBackground
         self.tableView.delegate = self
         self.tableView.dataSource = self
+        configureSegmentControl()
         configureTableView()
-        getNewsInfo()
+        getNewsInfo(info: "us")
 
+    }
+    
+    private func configureSegmentControl() {
+        view.addSubview(segmentControl)
+        segmentControl.addTarget(self, action: #selector(handleSegmentChange), for: .valueChanged)
+        
+        
+        NSLayoutConstraint.activate([
+            segmentControl.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 5),
+            segmentControl.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
+            segmentControl.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+        ])
+        segmentControl.translatesAutoresizingMaskIntoConstraints = false
+    }
+    
+    @objc fileprivate func handleSegmentChange(_ sender: UISegmentedControl) {
+        switch sender.selectedSegmentIndex {
+        case 0:
+            newsTitle.removeAll()
+            newsPicture.removeAll()
+            newsDetail.removeAll()
+            getNewsInfo(info: "us")
+        case 1:
+            newsTitle.removeAll()
+            newsPicture.removeAll()
+            newsDetail.removeAll()
+            getNewsInfo(info: "tr")
+        default:
+            break
+        }
+        
     }
     
     private func configureTableView() {
@@ -32,15 +70,15 @@ class NewsListVC: UIViewController {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            tableView.topAnchor.constraint(equalTo: segmentControl.bottomAnchor, constant: 10),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         
     }
     
-    func getNewsInfo() {
-        AF.request("https://newsapi.org/v2/top-headlines?country=us&apiKey=fdc8d7529c534dc19303dcef553347c1", method: .get).response { [self] response in
+   private func getNewsInfo(info: String) {
+        AF.request("https://newsapi.org/v2/top-headlines?country=\(info)&apiKey=fdc8d7529c534dc19303dcef553347c1", method: .get).response { [self] response in
             guard let data = response.data else { return }
             do {
                 let jsonResponse = try JSONSerialization.jsonObject(with: data) as? [String:Any]
@@ -61,6 +99,8 @@ class NewsListVC: UIViewController {
             tableView.reloadData()
         }
     }
+    
+
 }
 
 extension NewsListVC: UITableViewDelegate, UITableViewDataSource {
@@ -81,6 +121,15 @@ extension NewsListVC: UITableViewDelegate, UITableViewDataSource {
         detailVC.newsPicture = newsPicture[indexPath.row]
         detailVC.newsDetail = newsDetail[indexPath.row]
         present(detailVC, animated: true)
+    }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let readAction = UIContextualAction(style: .normal, title: "Read") { _, _, comp in
+            self.newsTitle.remove(at: indexPath.row)
+            tableView.reloadData()
+        }
+        readAction.image = UIImage(systemName: "message.fill")
+        return UISwipeActionsConfiguration(actions: [readAction])
     }
 
 }
